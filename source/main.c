@@ -10,6 +10,7 @@
 #include <avr/io.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "keypad.h"
 #include "timer.h"
 #include "scheduler.h"
@@ -371,7 +372,7 @@ int BallSM(int state)
 enum RicochetStates{RStart, RWait, HitUpperPaddle, HitLowerPaddle}RicochetState;
 
 
-RicochetSM(int state)
+int RicochetSM(int state)
 {
      switch(RicochetState)
      {  
@@ -386,7 +387,7 @@ RicochetSM(int state)
 			RicochetState = RWait;
 			break;
 		}
-		else if((TopPaddle == (j - 1)) && k == 1)//diagupleft hits the upper paddle
+		else if((TopPaddle == (j + 1)) && k == 1)//diagupleft hits the upper paddle
                 {
                         BallState = DiagRightDown;
                         RicochetState = RWait;
@@ -415,12 +416,256 @@ RicochetSM(int state)
 
 
 
+enum CPUStates{CPUStart, CPUWait, CPUUp, CPUDown, CPUFollow}CPUPaddleState;
+unsigned char CPUPaddleShift[5] = {0xFE, 0xFD, 0xFB, 0xF7, 0xEF};//up to down
+unsigned char CPUTopPaddle = 2;
+unsigned char CPUBotPaddle = 3;
+int a = 0;
 
+
+int CPUPaddleSM(int state)
+{
+	int RandNum;
+	//srand(time(NULL));
+	RandNum = rand() %3 + 1;
+
+
+
+
+
+switch(CPUPaddleState)
+    {
+        case CPUStart:
+            CPUPaddleState = CPUWait;
+            PORTC = 0x01;
+            PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];//position 3, 4
+            break;
+
+	 case CPUWait:
+
+
+	    if(RandNum == 1)
+	    {  PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+                        PORTC = 0x01;
+
+		    CPUPaddleState = CPUUp;
+		    break;
+	    }
+	    else if(RandNum == 2)
+	    {
+		     PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+                        PORTC = 0x01;
+			CPUPaddleState = CPUDown;
+			break;
+
+	    }
+	    else if(RandNum == 3)
+	    {
+		     PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+                        PORTC = 0x01;
+			CPUPaddleState = CPUFollow;
+			break;
+
+	    }
+
+	 case CPUFollow:
+	    PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+                        PORTC = 0x01;
+
+
+	    if(a < 300)
+	    {
+		    CPUPaddleState = CPUFollow;
+			    a++;
+			    break;
+
+	    }
+	    else if(CPUTopPaddle > j)
+	    { PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+                        PORTC = 0x01;
+		a = 0;
+		CPUPaddleState = CPUUp;
+		break;
+	    }
+	    else if(CPUTopPaddle < j)
+	    { PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+                        PORTC = 0x01;
+			a = 0;
+		    CPUPaddleState = CPUDown;
+		    break;
+	    }
+	    else if(CPUTopPaddle == j)
+	    { PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+                        PORTC = 0x01;
+			a = 0;
+		    CPUPaddleState = CPUWait;
+		    break;
+	    }
+            
+
+	    case CPUUp:
+                        /* PORTD = 0xFE;
+                         PORTC = 0x02;
+                         */
+
+                        PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+			PORTC = 0x01;
+            if(a < 300)
+            {
+                    CPUPaddleState = CPUUp;
+                            a++;
+                            break;
+                    
+            }
+
+                     
+	    else if(CPUTopPaddle > 0)
+                         {       //i = 0;//reset i
+                                 //BallState = TopOff;
+                           //      PORTC = 0x00;
+                           //      PORTD = 0xFF;
+			    PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+                        PORTC = 0x01;
+					a = 0;
+                                 CPUTopPaddle--;
+                                 CPUBotPaddle--;
+                                 CPUPaddleState = CPUWait;
+                                 break;
+                         }
+			 else 
+			 {
+				  PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+                        PORTC = 0x01;
+				a = 0;
+				 CPUPaddleState = CPUWait;
+				 break;
+			 }
+
+                     
+            
+        case CPUDown:
+            PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+                        PORTC = 0x01;
+
+			   if(a < 300)
+	        	    {
+        	            CPUPaddleState = CPUDown;
+                            a++;
+                            break;
+                    
+           			 }
+
+			   else if(CPUBotPaddle < 4)//insert rand num
+                         {       //i = 0;//reset i
+                                 //BallState = TopOff;
+                           //      PORTC = 0x00;
+                           //      PORTD = 0xFF;
+                            PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+                        PORTC = 0x01;
+			a = 0;
+
+                                 CPUTopPaddle++;
+                                 CPUBotPaddle++;
+                                 CPUPaddleState = CPUWait;
+                                 break;
+                         }
+                         else
+                         {
+				  PORTD = CPUPaddleShift[CPUTopPaddle] & CPUPaddleShift[CPUBotPaddle];
+                        PORTC = 0x01;
+			a = 0;
+
+                                 CPUPaddleState = CPUWait;
+                                 break;
+                         }
+
+            
+    }
+    return state;
+
+
+
+
+
+}
+
+
+
+enum ResetStates{ReStart, Reset}ResetState;
+
+int ResetSM(int state)
+{
+	unsigned char tmpa = ~PINA;
+	switch(ResetState)
+	{
+		case ReStart:
+			ResetState = Reset;
+			break;
+
+		case Reset:
+			if(tmpa == 0x04)
+			{
+				CPUPaddleState = CPUStart;
+				PaddleState = PStart;
+				BallState = BStart;
+				ResetState = ReStart;
+				break;
+			}
+	}
+	return state;
+}
+
+
+
+enum CPURicochetStates{CPURStart, CPURWait}CPURicochetState;
+int CPURicochetSM(int state)
+{
+     switch(RicochetState)
+     {  
+	case CPURStart:
+		RicochetState = RWait;
+		break;
+
+	case CPURWait:
+		if((CPUTopPaddle == (j + 1)) && k == 7)//diagdownleft hits the upper paddle
+		{
+			BallState = DiagLeftDown;
+			RicochetState = RWait;
+			break;
+		}
+		else if((CPUTopPaddle == (j + 1)) && k == 7)//diagupleft hits the upper paddle
+                {
+                        BallState = DiagLeftDown;
+                        RicochetState = RWait;
+                        break;
+                }
+		else if((CPUBotPaddle == (j + 1)) && k == 7)//diagdownleft hits the upper paddle
+                {
+                        BallState = DiagLeftUp;
+                        RicochetState = RWait;
+                        break;
+                }
+		else if((CPUBotPaddle == (j + 1)) && k == 7)//diagdownleft hits the upper paddle
+                {
+                        BallState = DiagLeftUp;
+                        RicochetState = RWait;
+                        break;
+                }
+
+
+
+
+
+      }
+}
+
+
+/*
 enum MultRowsStates{MStart, Row1, Row2, Row3, Row4, Row5} MultRowsState;
 unsigned char stayInState;
 unsigned char incUntilNextState;
 
-
+*/
 /*
 int TimeMultSM(int state)//row by row
 {
@@ -500,13 +745,14 @@ typedef struct _task{
 
 int main(void)
 {
+	srand(time(NULL));
 
     DDRA = 0x00; PORTA = 0xFF;
     DDRC = 0xFF; PORTC = 0x00;
 	DDRD = 0xFF; PORTD = 0x00;
     
-    static task task1, task2, task3, task4;
-    task *tasks[] = {&task1, &task2, &task3};
+    static task task1, task2, task3, task4, task5, task6;
+    task *tasks[] = {&task1, &task2, &task3, &task4, &task5, &task6};
     const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
     
     const char start = -1;
@@ -525,6 +771,22 @@ int main(void)
     task3.period = 2;
     task3.elapsedTime = task3.period;
     task3.TickFct = &PaddleSM;
+
+    task4.state = CPUStart;
+    task4.period = 2;
+    task4.elapsedTime = task4.period;
+    task4.TickFct = &CPUPaddleSM;
+
+    task5.state = ReStart;
+    task5.period = 2;
+    task5.elapsedTime = task5.period;
+    task5.TickFct = &ResetSM;
+
+    task6.state = CPURStart;
+    task6.period = 2;
+    task6.elapsedTime = task5.period;
+    task6.TickFct = &CPURicochetSM;
+
     
    
     
@@ -537,6 +799,7 @@ int main(void)
 
     while(1)
     {
+
 
 	for(i = 0; i < numTasks; i++)
         {
